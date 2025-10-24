@@ -3,8 +3,6 @@ using ECommerce.BasketService.API.Repositories;
 using ECommerce.BasketService.API.UseCases.Commands;
 using ECommerce.BasketService.API.UseCases.Queries;
 using ECommerce.BuildingBlocks.EventBus.Base.Abstractions;
-using ECommerce.BuildingBlocks.EventBus.Base.DTOs;
-using ECommerce.BuildingBlocks.EventBus.Base.Events.Baskets;
 using ECommerce.BuildingBlocks.Shared.Kernel.Exceptions;
 using Space.Abstraction;
 using Space.Abstraction.Attributes;
@@ -14,34 +12,6 @@ namespace ECommerce.BasketService.API.UseCases.Handlers;
 
 public class BasketHandler(IBasketRepository repo, IEventBus eventBus)
 {
-    [Handle]
-    public async Task<Nothing> CheckoutAsync(HandlerContext<CheckoutCommand> ctx)
-    {
-        ctx.CancellationToken.ThrowIfCancellationRequested();
-
-        var user = ctx.Request.User;
-        var request = ctx.Request.CheckoutRequest;
-
-        var basket = await repo.GetAsync(user.UserId);
-
-        // Event yayınla
-        var basketCheckedOutEvent = new BasketCheckedOutIntegrationEvent
-        {
-            OccurredOn = DateTime.UtcNow,
-            CorrelationId = Guid.CreateVersion7(),
-            CustomerId = user.UserId,
-            CustomerEmail = user.CustomerEmail,
-            CustomerName = user.CustomerName,
-            Items = basket.Items.Select(i => new BasketItemDto { ProductId = i.ProductId, Quantity = i.Quantity }).ToList(),
-            ShippingAddress = request.ShippingAddress,
-            BillingAddress = request.BillingAddress,
-        };
-
-        await eventBus.PublishAsync(basketCheckedOutEvent);
-
-        return Nothing.Value;
-    }
-
     [Handle]
     public async Task<Basket?> GetUserItemsAsync(HandlerContext<GetUserItemsQuery> ctx)
     {
