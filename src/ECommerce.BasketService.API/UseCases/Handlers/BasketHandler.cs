@@ -2,7 +2,6 @@
 using ECommerce.BasketService.API.Repositories;
 using ECommerce.BasketService.API.UseCases.Commands;
 using ECommerce.BasketService.API.UseCases.Queries;
-using ECommerce.BuildingBlocks.EventBus.Base.Abstractions;
 using ECommerce.BuildingBlocks.Shared.Kernel.Exceptions;
 using Space.Abstraction;
 using Space.Abstraction.Attributes;
@@ -10,7 +9,7 @@ using Space.Abstraction.Context;
 
 namespace ECommerce.BasketService.API.UseCases.Handlers;
 
-public class BasketHandler(IBasketRepository repo, IEventBus eventBus)
+public class BasketHandler(IBasketRepository repo)
 {
     [Handle]
     public async Task<Basket?> GetUserItemsAsync(HandlerContext<GetUserItemsQuery> ctx)

@@ -1,6 +1,4 @@
 ﻿using ECommerce.BasketService.API.Repositories;
-using ECommerce.BuildingBlocks.EventBus.Base;
-using ECommerce.BuildingBlocks.EventBus.RabbitMQ;
 using ECommerce.BuildingBlocks.Shared.Kernel.Auth.Options;
 using ECommerce.BuildingBlocks.Shared.Kernel.Middlewares;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -60,14 +58,6 @@ public static class DependecyInjection
         services.AddSingleton<IConnectionMultiplexer>(
             sp => ConnectionMultiplexer.Connect(configuration.GetConnectionString("Redis")!)
             );
-        #endregion
-
-        #region RabbitMQ
-        var eventBusConfig = configuration
-            .GetSection("EventBusConfig")
-            .Get<EventBusConfig>();
-
-        services.AddRabbitMQEventBus(eventBusConfig!, new[] { typeof(Program).Assembly });
         #endregion
 
         #region Space
