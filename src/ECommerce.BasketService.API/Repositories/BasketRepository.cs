@@ -1,4 +1,5 @@
 ﻿using ECommerce.BasketService.API.Domain.Entities;
+using ECommerce.BuildingBlocks.Shared.Kernel.ValueObjects;
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -29,9 +30,7 @@ public class BasketRepository : IBasketRepository
         if (val.IsNullOrEmpty) return null;
 
         var basket = JsonSerializer.Deserialize<Basket>(val!, _jsonOptions);
-
         await _db.KeyExpireAsync(key, _defaultTtl);
-
         return basket;
     }
 
@@ -44,5 +43,74 @@ public class BasketRepository : IBasketRepository
     public async Task RemoveAsync(Guid userId)
     {
         await _db.KeyDeleteAsync(Key(userId));
+    }
+
+    public async Task UpdateProductPriceAsync(Guid productId, Money newPrice)
+    {
+        var userKeys = await GetAllBasketKeysAsync();
+
+        foreach (var key in userKeys)
+        {
+            var val = await _db.StringGetAsync(key);
+            if (val.IsNullOrEmpty) continue;
+
+            var basket = JsonSerializer.Deserialize<Basket>(val!, _jsonOptions);
+            if (basket == null) continue;
+
+            var itemsToUpdate = basket.Items.Where(i => i.ProductId == productId).ToList();
+
+            if (itemsToUpdate.Any())
+            {
+                foreach (var item in itemsToUpdate)
+                {
+                    item.UnitPrice = newPrice;
+                }
+
+                var json = JsonSerializer.Serialize(basket, _jsonOptions);
+                var ttl = await _db.KeyTimeToLiveAsync(key);
+                await _db.StringSetAsync(key, json, ttl ?? _defaultTtl);
+            }
+        }
+    }
+
+    public async Task UpdateProductStockAsync(Guid productId, int quantityChange)
+    {
+        var userKeys = await GetAllBasketKeysAsync();
+
+        foreach (var key in userKeys)
+        {
+            var val = await _db.StringGetAsync(key);
+            if (val.IsNullOrEmpty) continue;
+
+            var basket = JsonSerializer.Deserialize<Basket>(val!, _jsonOptions);
+            if (basket == null) continue;
+
+            var itemsToUpdate = basket.Items.Where(i => i.ProductId == productId).ToList();
+
+            if (itemsToUpdate.Any())
+            {
+                foreach (var item in itemsToUpdate)
+                {
+                    item.UnitsInStock += quantityChange;
+                }
+
+                var json = JsonSerializer.Serialize(basket, _jsonOptions);
+                var ttl = await _db.KeyTimeToLiveAsync(key);
+                await _db.StringSetAsync(key, json, ttl ?? _defaultTtl);
+            }
+        }
+    }
+
+    private async Task<List<string>> GetAllBasketKeysAsync()
+    {
+        var keys = new List<string>();
+        var server = _db.Multiplexer.GetServer(_db.Multiplexer.GetEndPoints().First());
+
+        await foreach (var key in server.KeysAsync(pattern: "basket:*"))
+        {
+            keys.Add(key.ToString());
+        }
+
+        return keys;
     }
 }
